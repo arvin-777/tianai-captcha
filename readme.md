@@ -313,6 +313,7 @@ public class Test {
 
 
 //获取滑块验证码
+```java
 	public Map<String,Object> genSliderCaptcha() {
 		ImageCaptchaResourceManager imageCaptchaResourceManager = new DefaultImageCaptchaResourceManager();
 	    MultiImageCaptchaGenerator imageCaptchaGenerator = new MultiImageCaptchaGenerator(imageCaptchaResourceManager, true);
