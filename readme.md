@@ -309,4 +309,43 @@ public class Test {
     }
 }
 ```
-# qq群: 1021884609
+-----------本文附件有html的demo，下面是根据自己项目后接入java层代码
+
+
+//获取滑块验证码
+	public Map<String,Object> genSliderCaptcha() {
+		ImageCaptchaResourceManager imageCaptchaResourceManager = new DefaultImageCaptchaResourceManager();
+	    MultiImageCaptchaGenerator imageCaptchaGenerator = new MultiImageCaptchaGenerator(imageCaptchaResourceManager, true);
+	    ImageCaptchaInfo imageCaptchaInfo = imageCaptchaGenerator.generateCaptchaImage(CaptchaTypeConstant.SLIDER);//滑块验证码
+	    System.out.println(imageCaptchaInfo);
+        // 负责计算一些数据存到缓存中，用于校验使用
+        // ImageCaptchaValidator负责校验用户滑动滑块是否正确和生成滑块的一些校验数据; 比如滑块到凹槽的百分比值
+        ImageCaptchaValidator imageCaptchaValidator = new BasicCaptchaTrackValidator();
+        // 这个map数据应该存到缓存中，校验的时候需要用到该数据
+        Map<String, Object> map = imageCaptchaValidator.generateImageCaptchaValidData(imageCaptchaInfo);
+	        
+		String id = UUID.randomUUID().toString().replace("-", "");
+		redisTemplate.boundValueOps(id).set(JSONObject.toJSONString(map), 60 * 2, TimeUnit.SECONDS);//滑块验证码2分钟后过期
+		Map<String,Object> ret = new HashMap<String,Object>();
+		ret.put("id", id);
+		ret.put("captcha", imageCaptchaInfo);
+		
+		return ret;
+	}
+	//验证滑块验证码
+	public ResponseJson checkSliderCaptcha(String id,String data) {
+		   ImageCaptchaValidator sliderCaptchaValidator = new BasicCaptchaTrackValidator();
+		   String jsonStr = new String(Base64.decodeBase64(data));
+		   ImageCaptchaTrack imageCaptchaTrack = JSON.parseObject(jsonStr, ImageCaptchaTrack.class);
+	        // 用户传来的行为轨迹和进行校验 
+	        // - imageCaptchaTrack为前端传来的滑动轨迹数据
+	        // - map 为生成验证码时缓存的map数据
+		    Map<String,Object> map = JSON.parseObject(redisTemplate.boundValueOps(id).get(), new TypeReference<Map<String,Object>>() {});
+	        boolean check = sliderCaptchaValidator.valid(imageCaptchaTrack, map);
+	        if(check) {
+	        	String key = Constant.SLIDE_VALIDATECODE_PREX+UUID.randomUUID().toString().replace("-", "");
+	        	redisTemplate.boundValueOps(key).set("true", 60 * 2, TimeUnit.SECONDS);//滑块验证码2分钟后过期
+	        	return ResponseJson.success(key);
+	        }
+	        return ResponseJson.error();
+	}
